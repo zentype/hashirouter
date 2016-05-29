@@ -1,0 +1,11 @@
+{
+  "name": "hashirouter",
+  "version": "1.0.0",
+  "description": "Hash router with placeholders, hash normalisation and a not found route.",
+  "scripts": {
+    "test": "tape test/*.js"
+  },
+  "devDependencies": {
+    "tape": "^4.5.1"
+  }
+}
