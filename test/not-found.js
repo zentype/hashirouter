@@ -17,7 +17,7 @@ test('add a route and check the not-found route is called', function(t) {
     t.fail('Inbox should not be triggered')
   })
 
-  r.addNotFound(function(hash) {
+  r.setNotFound(function(hash) {
     t.pass('The notFound route is triggered')
     t.equal(hash, 'drafts', 'The hash given back to the notFound handler is correct')
   })

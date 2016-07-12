@@ -83,7 +83,7 @@ test('add a few routes and check various ones are called or not', function(t) {
     t.fail('tag should not be triggered')
   });
 
-  r.addNotFound(function(hash) {
+  r.setNotFound(function(hash) {
     t.fail('the notFound function should not be triggered')
   });
 

@@ -4,168 +4,131 @@
 
 // --------------------------------------------------------------------------------------------------------------------
 
-// From: https://raw.githubusercontent.com/ForbesLindesay/umd/master/template.js
-;(function (f) {
-  // CommonJS
-  if (typeof exports === "object" && typeof module !== "undefined") {
-    module.exports = f();
+function HashiRouter(opts) {
+  opts = opts || {};
 
-  // RequireJS
-  } else if (typeof define === "function" && define.amd) {
-    define([], f);
-
-  // <script>
-  } else {
-    var g;
-    if (typeof window !== "undefined") {
-      g = window;
-    } else if (typeof global !== "undefined") {
-      g = global;
-    } else if (typeof self !== "undefined") {
-      g = self;
-    } else {
-      // works providing we're not in "use strict";
-      // needed for Java 8 Nashorn
-      // see https://github.com/facebook/react/issues/3037
-      g = this;
-    }
-    defineNamespace()
+  // check we got a default route
+  if ( !opts.def ) {
+    throw new Error("HashiRouter: provide a default route [opts.def]");
   }
 
-})(function () {
+  // keep these options
+  this.opts = opts;
 
-  // --- class ---
+  // the routes which get added
+  this.routes = [];
 
-  function Router(opts) {
-    opts = opts || {};
+  // the notFound route (if set)
+  this.notFound = null;
+}
 
-    // check we got a default route
-    if ( !opts.def ) {
-      throw new Error("Router: provide a default route [opts.def]");
-    }
+HashiRouter.prototype.add = function add(path, fn) {
+  var segments = this.match(path);
+  var route = {
+    path     : path,
+    segments : segments,
+    length   : segments.length,
+    fn       : fn,
+  };
+  this.routes.push(route);
+};
 
-    // keep these options
-    this.opts = opts;
+HashiRouter.prototype.match = function match(path) {
+  var segments = path.replace(/^#\/?|\/*$/g, '').split('/');
+  return segments;
+};
 
-    // the routes which get added
-    this.routes = [];
+HashiRouter.prototype.getRoutes = function getRoutes() {
+  return this.routes;
+};
 
-    // the notFound route (if set)
-    this.notFound = null;
+HashiRouter.prototype.route = function route(hash) {
+  this.debug('Routing hash=' + hash);
+
+  // firstly, replace any leading '#', '#/', '/' or trailing '/' with nothing
+  var normalised = hash.replace(/^#?\/?|\/*$/g, '');
+
+  // if we have nothing at all, just return the default
+  if ( normalised.length === 0 ) {
+    this.debug('No hash given, returning the default hash=#' + this.opts.def);
+    return '#' + this.opts.def;
   }
 
-  Router.prototype.add = function add(path, fn) {
-    var segments = this.match(path);
-    var route = {
-      path     : path,
-      segments : segments,
-      length   : segments.length,
-      fn       : fn,
-    };
-    this.routes.push(route);
-  };
+  // if the normalise hash is different, then just tell the caller to set that
+  if ( normalised !== hash ) {
+    this.debug('Hash is not normalised - returning new hash=#' + normalised);
+    return '#' + normalised;
+  }
 
-  Router.prototype.match = function match(path) {
-    var segments = path.replace(/^#\/?|\/*$/g, '').split('/');
-    return segments;
-  };
+  var segments = normalised.split('/');
 
-  Router.prototype.getRoutes = function getRoutes() {
-    return this.routes;
-  };
+  // loop through all routes
+  var matched = false;
+  ROUTE: for ( var i = 0; i < this.routes.length; i++ ) {
+    var route = this.routes[i];
+    this.debug('Matching against path=' + route.path);
 
-  Router.prototype.route = function route(hash) {
-    this.debug('Routing hash=' + hash);
-
-    // firstly, replace any leading '#', '#/', '/' or trailing '/' with nothing
-    var normalised = hash.replace(/^#?\/?|\/*$/g, '');
-
-    console.error('normalised:', normalised.length)
-
-    // if we have nothing at all, just return the default
-    if ( normalised.length === 0 ) {
-      this.debug('No hash given, returning the default hash=#' + this.opts.def);
-      console.error('here')
-      return '#' + this.opts.def;
+    // if this hash isn't the same length as this route, then it can't match
+    if ( route.segments.length !== segments.length ) {
+      this.debug('This hash and route have different path lengths:')
+      this.debug(' * route = ' + route.segments.length);
+      this.debug(' * hash  = ' + segments.length);
+      continue ROUTE;
     }
 
-    // if the normalise hash is different, then just tell the caller to set that
-    if ( normalised !== hash ) {
-      this.debug('Hash is not normalised - returning new hash=#' + normalised);
-      return '#' + normalised;
-    }
+    // create an array of any matching placeholders
+    var args = [];
 
-    var segments = normalised.split('/');
+    // loop through each segment and see if it matches
+    SEGMENT: for ( var si = 0; si < route.segments.length; si++ ) {
+      // if this is a placeholder, then we always match
+      if ( route.segments[si][0] === ':' ) {
+        this.debug('Found a route placeholder : ' + segments[si]);
+        // push this segments onto args
+        args.push(segments[si]);
+        // go to next segment
+        continue SEGMENT;
+      }
 
-    // loop through all routes
-    var matched = false;
-    ROUTE: for ( var i = 0; i < this.routes.length; i++ ) {
-      var route = this.routes[i];
-      this.debug('Matching against path=' + route.path);
-
-      // if this hash isn't the same length as this route, then it can't match
-      if ( route.segments.length !== segments.length ) {
-        this.debug('This hash and route have different path lengths:')
-        this.debug(' * route = ' + route.segments.length);
-        this.debug(' * hash  = ' + segments.length);
+      // if this segment doesn't match, then move on to the next route
+      if ( segments[si] !== route.segments[si] ) {
+        this.debug('Path segment does not match expected:');
+        this.debug(' * route = ' + route.segments[si]);
+        this.debug(' * hash  = ' + segments[si]);
         continue ROUTE;
       }
 
-      // create an array of any matching placeholders
-      var args = [];
-
-      // loop through each segment and see if it matches
-      SEGMENT: for ( var si = 0; si < route.segments.length; si++ ) {
-        // if this is a placeholder, then we always match
-        if ( route.segments[si][0] === ':' ) {
-          this.debug('Found a route placeholder : ' + segments[si]);
-          // push this segments onto args
-          args.push(segments[si]);
-          // go to next segment
-          continue SEGMENT;
-        }
-
-        // if this segment doesn't match, then move on to the next route
-        if ( segments[si] !== route.segments[si] ) {
-          this.debug('Path segment does not match expected:');
-          this.debug(' * route = ' + route.segments[si]);
-          this.debug(' * hash  = ' + segments[si]);
-          continue ROUTE;
-        }
-
-        this.debug('Path segment matches - continuing to next segment');
-      }
-
-      this.debug('Matched hash=' + hash + ' with path=' + route.path);
-
-      // if we are here, then we matched ok
-      matched = true;
-      route.fn.apply(null, args);
-      break ROUTE;
-      // return; // ???
+      this.debug('Path segment matches - continuing to next segment');
     }
 
-    this.debug('matched=' + matched)
+    this.debug('Matched hash=' + hash + ' with path=' + route.path);
 
-    // see if we matched something, if not, call the notFound route (if available)
-    if ( !matched ) {
-      this.notFound && this.notFound(normalised);
-    }
-  };
-
-  Router.prototype.addNotFound = function addNotFound(fn) {
-    this.notFound = fn;
+    // if we are here, then we matched ok
+    matched = true;
+    route.fn.apply(null, args);
+    break ROUTE;
+    // return; // ???
   }
 
-  Router.prototype.debug = function debug(msg) {
-    if ( !this.opts.debug ) return;
-    console.log('Router: ' + msg);
+  this.debug('matched=' + matched)
+
+  // see if we matched something, if not, call the notFound route (if available)
+  if ( !matched ) {
+    this.notFound && this.notFound(normalised);
   }
+};
 
-  // --- return ---
+HashiRouter.prototype.setNotFound = function setNotFound(fn) {
+  this.notFound = fn;
+}
 
-  return Router;
+HashiRouter.prototype.debug = function debug(msg) {
+  if ( !this.opts.debug ) return;
+  console.log('HashiRouter: ' + msg);
+}
 
-});
+// --------------------------------------------------------------------------------------------------------------------
+
+module.exports = HashiRouter;
 
 // --------------------------------------------------------------------------------------------------------------------

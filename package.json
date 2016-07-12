@@ -2,10 +2,24 @@
   "name": "hashirouter",
   "version": "1.0.0",
   "description": "Hash router with placeholders, hash normalisation and a not found route.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zentype/hashirouter.git"
+  },
+  "bugs": {
+    "url": "https://github.com/zentype/hashirouter/issues",
+    "email": "chilts@zentype.io"
+  },
   "scripts": {
-    "test": "tape test/*.js"
+    "test": "for FILE in test/*.js; do echo \"### $FILE ###\"; tape $FILE; done"
   },
   "devDependencies": {
     "tape": "^4.5.1"
-  }
+  },
+  "author": {
+    "name": "Andrew Chilton",
+    "email": "andychilton@gmail.com",
+    "url": "http://chilts.org/"
+  },
+  "license": "ISC"
 }
